@@ -2,6 +2,15 @@
  * Created by Vitaliy Kiselyov on 17.01.2022.
  * https://github.com/vava94/SUCK
  * vitkiselyov@gmail.com
+ *
+ * Simple Uart Communication Kernel.
+ * Can be used only in Linux for now.
+ *
+ * Very simple usage:
+ * 1) Construct
+ * 2) Open
+ * 3) Operate (write, read (once or in the loop))
+ * 4) Close
  */
 
 #ifndef SUCK_HPP
@@ -19,6 +28,7 @@
 class SUCK {
 
 public:
+    /// Available baud rates for termios.
     enum BAUD_RATE {
         BR0         = B0,
         BR50        = B50,
@@ -53,21 +63,57 @@ public:
         BR4000000   = B4000000
     };
 
+    /// @brief Callback for received data.
+    /// Could be binded with function which template is "void func(uint8_t* data, size_t size)".
     std::function<void(uint8_t*, size_t)> callback_dataReady = nullptr;
-    bool log = true;
+
+    /// @brief Logging variable. Enable to see some infos in console.
+    bool log = false;
+
+    /// @brief Receive buffer size in bytes.
     size_t readBuffSize = 4096;
+
+    /// @brief Write buffer size in bytes.
     size_t writeBuffSize = 4096;
 
     explicit SUCK();
+
+    /// @brief Closes the port.
+    void close() const;
+
+    /// @brief Checks port state.
     [[nodiscard]] bool isOpen() const;
+
+    /// @brief Opens the port.
+    /// @param ttyName - path to port, for example "/dev/ttyS0".
+    /// @param baudRate - rate in built-in bauds.
+    /// @return true in case of success.
     bool open(const std::string& ttyName, BAUD_RATE baudRate);
+
+    /// @brief OPens the port.
+    /// @param ttyName - path to port, for example "/dev/ttyS0".
+    /// @param baudRate - rate in integer digits. Must be similar to built-in variants, else false.
+    /// @return true in case of success.
+    bool open(const std::string& ttyName, int baudRate);
+
+    /// @brief Reads from port once. Returns data in callback.
+    /// @param async If false then read blocks calling thread for a little.
     void read(bool async=true);
+
+    /// @brief Set another baud rate to current port.
     bool setBaud(BAUD_RATE baudRate);
+
+    /// @brief Starts a read loop.
     void startReadLoop();
+
+    /// @brief Stops a read loop.
     void stopReadLoop();
-    void write(uint8_t *data, size_t size);
+
+    /// @brief Writes data to port.
+    void write(uint8_t *data, size_t size) const;
 
 private:
+    int mDelay = 0;
     bool mOpen;
     bool mRunning;
     int mTtyFD = 0;
@@ -75,7 +121,6 @@ private:
     std::thread *mLoopThread;
 
     void mReadLoop(bool oneShot=false);
-
 };
 
 
